@@ -1,0 +1,51 @@
+mjolnir es un sistema distribuído.
+Consiste de un proceso maestro(PM/Pm), que es el que guarda el estado real
+del sistema, y canales de comunicación con los procesos satélite(Pn), que
+guardan estimaciones del estado real del sistema. Cada Pn se subdivide en 
+tres hilos: hilo del Diagrama, hilo de la GUI, hilo de Redes.
+Las relaciones de estos tres hilos son complejas, y siguen un patrón que tengo
+aún por esclarecer y formalizar:
+Comparten acceso a variables comunes a nivel Pn, y cada uno posee acceso a 
+variables locales a su propio dominio. Qué quiere decir esto? Que tenemos una
+jerarquía "de localidad":
+
+P1D P1R P1G  P2D P2R P2G  P2D P2R P2G  ...
+
+  `  '  ´      `  '  ´      `  '  ´
+     P1           P2          P3    ...
+      
+        `         '        ´
+                  PM
+
+La principal forma (pero no la única) mediante la cual PM altera su propio
+estado es a través de los Pn, sin embargo, ningún Pn conoce el estado real del
+sistema en su totalidad.
+Las operaciones que Pn efectúa sobre PM, definámoslas como transacciones, pueden
+arrojar excepciones, pues dos Pn pueden estar accediendo al mismo recurso al
+mismo tiempo. En esencia es como un problema de multithreading, pero cada "hilo"
+es un integrante del sistema, lo cual dificulta enormemente la atomicidad de las
+operaciones. Me gustaría investigar si existe algún concepto similar a un
+"mutex de red". Las implicaciones de latencia son obvias, pero haría falta
+evidencia empírica para asegurar que sobre una red local son o no perjudiciales.
+Al parecer el concepto de mutex de red no es alg nuevo y existe en bases de datos 
+y sistemas distribuidos de manera común.
+El escenario del error sería el siguiente:
+1. Represento el estado de un objeto (al mismo tiempo éste es modificado por otro Pn)
+2. Lo modifico (para entonces Pm ya fue notificado del cambio por el otro Pn y notifica
+   a todos los Pn (incluido yo mismo) de este cambio.
+3. Aviso a Pn de mi propio cambio (para entonces yo ya tengo en mi pila de mensajes
+   que localmente debo modificar esa variable)
+4. Pn avisa a todos de ese cambio y sobreescribe el recurso modificado.
+
+Es un caso claro del típico ejemplo RRWW, donde la primera escritura es sobreescrita
+por la segunda.
+No podemos lockear la lectura, pues sería extremadamente ineficiente (imagina cuántas
+lecturas hacemos todo el tiempo). Lo que sí podemos es hacer escrituras que fallen.
+El truco está en determinar las condiciones bajo las cuales debemos determinar que
+una escritura fallará.
+Esto lo debe determinar PM (Si pudiera hacerse en Pn sería genial pues distribuyes el peso
+de la computación). Si pudiera "desglosar" el tipo de transacciones realizables.
+
+----------------------------------------------------------------------------------
+
+Repeticiones
