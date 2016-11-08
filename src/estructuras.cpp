@@ -1,3 +1,3 @@
 #include "estructuras.h"
 
-std::map<int, ditto> mapa;
+//std::map<int, ditto> mapa;

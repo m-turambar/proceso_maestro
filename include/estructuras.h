@@ -3,7 +3,7 @@
 
 #include <map>
 
-extern std::map<int, ditto> mapa;
+//extern std::map<int, ditto> mapa;
 
 struct punto
 {

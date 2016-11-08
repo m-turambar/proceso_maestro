@@ -7,6 +7,8 @@
 #include <iterator>
 #include "socket_y_sesion.h"
 
+extern string cargar_valor(string);
+
 void sesion::iniciar()
 {
   cout << socket_.remote_endpoint().address().to_string() << ":" << socket_.remote_endpoint().port() << '\n';
@@ -25,12 +27,21 @@ void sesion::procesar_lectura()
     std::thread hilo(&sesion::enviar_archivo, this, archivo); //no preguntes
     hilo.detach();
   }
+  else if(lectura.substr(0,7) == "version")
+  {
+    string version_cliente = lectura.substr(8);
+    string version_serv = cargar_valor("version");
+    if(version_cliente!=version_serv)
+    {
+      cout << "veriones diferentes\n";
+      hacer_escritura("advertencia actualizar"); //advertencia + actualizar. son palabras clave
+    }
+  }
   else
   {
     cout << data_ << '\n';
   }
   memset(data_, '\0', longitud_maxima);
-
 }
 
 void sesion::enviar_archivo(string archivo)
@@ -58,12 +69,12 @@ void sesion::enviar_archivo(string archivo)
     asio::io_service iosvc2;
     asio::ip::tcp::socket sk(iosvc2);
 
-    //conectar al cliente que inició esta petición de archivo a su puerto 1339
+    //conectar al cliente que inició esta petición de archivo a su puerto puerto_remoto_ftp_
     cout << "conectando a " << socket_.remote_endpoint().address().to_string()
        << ":" << puerto_remoto_ftp_ << " para transferir " << archivo << " con " << buf.size() << " bytes\n";
-    asio::ip::tcp::endpoint endpoint(socket_.remote_endpoint().address(), puerto_remoto_ftp_); //arriesgado llamer a socket_
+    asio::ip::tcp::endpoint endpoint(socket_.remote_endpoint().address(), puerto_remoto_ftp_); //arriesgado llamar a socket_
     sk.connect(endpoint);
-    asio::write(sk, asio::buffer(buf.data(), buf.size()));
+    asio::write(sk, asio::buffer(buf.data(), buf.size())); //escribimos el archivo correcto
     sk.close();
     cout << "transferencia finalizada" << endl;
   }
@@ -83,8 +94,7 @@ void sesion::hacer_lectura()
     if (!ec)
     {
       procesar_lectura();
-      /*procesar lectura y responder si es necesario*/
-      hacer_lectura();
+      hacer_lectura(); //siempre volvemos a "escuchar"
     }
     else
     {
@@ -105,6 +115,10 @@ void sesion::hacer_escritura(std::string str)
     if (!ec)
     {
       /*procesar escritura exitosa*/
+    }
+    else
+    {
+      cout << "Error escritura:" << ec.value() << ":" << ec.message() << '\n';
     }
   });
 }
