@@ -21,12 +21,12 @@ public:
 private:
   void hacer_lectura();
   void hacer_escritura(std::string str);
+  void hacer_escritura_terminante(std::string str);
   void procesar_lectura();
   void enviar_archivo(string archivo);
 
   tcp::socket socket_;
   enum {longitud_maxima = 4096};
-  const int puerto_remoto_ftp_ = 1339;
   char data_[longitud_maxima];
   std::string str_;
 };

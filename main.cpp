@@ -27,8 +27,8 @@ int main(int argc, char* argv[])
     asio::io_service io_service;
 
     servidor s(io_service, 1337);
+    servidor ftp(io_service, 1339); //aunque sean idénticos, no queremos solicitudes de control a media transferencia
     cout << "pm escuchando en 127.0.0.1::1337" << endl;
-    //servidor_ftp sftp(io_service, 1338);
 
     io_service.run();
   }

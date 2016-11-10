@@ -1,5 +1,5 @@
 # depslib dependency file v1.0
-1476376861 source:c:\proyectos\proceso_maestro\main.cpp
+1478737318 source:c:\proyectos\proceso_maestro\main.cpp
 	<cstdlib>
 	<iostream>
 	<memory>
@@ -11,17 +11,17 @@
 	"estructuras.h"
 	"socket_y_sesion.h"
 
-1476196616 source:c:\proyectos\proceso_maestro\src\estructuras.cpp
+1478543747 source:c:\proyectos\proceso_maestro\src\estructuras.cpp
 	"estructuras.h"
 
-1476376499 c:\proyectos\proceso_maestro\include\estructuras.h
+1478543747 c:\proyectos\proceso_maestro\include\estructuras.h
 	<map>
 
-1476833630 c:\proyectos\proceso_maestro\include\socket_y_sesion.h
+1478739423 c:\proyectos\proceso_maestro\include\socket_y_sesion.h
 	"asio.hpp"
 	"estructuras.h"
 
-1476978641 source:c:\proyectos\proceso_maestro\src\socket_y_sesion.cpp
+1478736989 source:c:\proyectos\proceso_maestro\src\socket_y_sesion.cpp
 	<iostream>
 	<cstring>
 	<cstdlib>
@@ -30,4 +30,9 @@
 	<thread>
 	<iterator>
 	"socket_y_sesion.h"
+
+1478561481 source:c:\proyectos\proceso_maestro\configuracion.cpp
+	<iostream>
+	<fstream>
+	<sstream>
 

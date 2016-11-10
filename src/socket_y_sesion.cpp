@@ -24,8 +24,8 @@ void sesion::procesar_lectura()
   {
     string archivo = lectura.substr(4);
     cout << "ftp:" << archivo << endl;
-    std::thread hilo(&sesion::enviar_archivo, this, archivo); //no preguntes
-    hilo.detach();
+    enviar_archivo(archivo);
+    return; //para evitar volver a leer
   }
   else if(lectura.substr(0,7) == "version")
   {
@@ -42,6 +42,7 @@ void sesion::procesar_lectura()
     cout << data_ << '\n';
   }
   memset(data_, '\0', longitud_maxima);
+  hacer_lectura(); //siempre volvemos a "escuchar"
 }
 
 void sesion::enviar_archivo(string archivo)
@@ -50,39 +51,15 @@ void sesion::enviar_archivo(string archivo)
   std::ifstream ifs(archivo, std::ios::binary);
   if(!ifs)
   {
-    //no se pudo abrir archivo. Posiblemente notificar al cliente
     cout << "Error abriendo archivo:" << archivo << '\n';
     return;
   }
+
   ifs.seekg(0, std::ios_base::end);
-
-  /*Reservamos la memoria*/
-  buf.resize(ifs.tellg());
-
+  buf.resize(ifs.tellg()); /*Reservamos la memoria*/
   ifs.seekg(0); //regresamos el iterador de ifs a su inicio
-
-  /*Leemos el archivo de golpe*/
-  ifs.read(&buf[0], buf.size());
-
-  try
-  {
-    asio::io_service iosvc2;
-    asio::ip::tcp::socket sk(iosvc2);
-
-    //conectar al cliente que inició esta petición de archivo a su puerto puerto_remoto_ftp_
-    cout << "conectando a " << socket_.remote_endpoint().address().to_string()
-       << ":" << puerto_remoto_ftp_ << " para transferir " << archivo << " con " << buf.size() << " bytes\n";
-    asio::ip::tcp::endpoint endpoint(socket_.remote_endpoint().address(), puerto_remoto_ftp_); //arriesgado llamar a socket_
-    sk.connect(endpoint);
-    asio::write(sk, asio::buffer(buf.data(), buf.size())); //escribimos el archivo correcto
-    sk.close();
-    cout << "transferencia finalizada" << endl;
-  }
-  catch (const std::exception &exc)
-  {
-    // catch anything thrown within try block that derives from std::exception
-    std::cerr << "Error enviando archivo: " << exc.what();
-  }
+  ifs.read(&buf[0], buf.size()); /*Leemos el archivo de golpe*/
+  hacer_escritura_terminante(buf);
 }
 
 void sesion::hacer_lectura()
@@ -94,7 +71,6 @@ void sesion::hacer_lectura()
     if (!ec)
     {
       procesar_lectura();
-      hacer_lectura(); //siempre volvemos a "escuchar"
     }
     else
     {
@@ -115,6 +91,24 @@ void sesion::hacer_escritura(std::string str)
     if (!ec)
     {
       /*procesar escritura exitosa*/
+    }
+    else
+    {
+      cout << "Error escritura:" << ec.value() << ":" << ec.message() << '\n';
+    }
+  });
+}
+
+void sesion::hacer_escritura_terminante(std::string str)
+{
+  str_ = str;
+  auto si_mismo(shared_from_this());
+  asio::async_write(socket_, asio::buffer(str_.data(), str_.size()),
+    [this, si_mismo](std::error_code ec, std::size_t /*length*/)
+  {
+    if (!ec)
+    {
+      socket_.close();
     }
     else
     {

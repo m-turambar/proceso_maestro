@@ -24,6 +24,8 @@
 			<Add option="-Wall" />
 			<Add option="-fexceptions" />
 		</Compiler>
+		<Unit filename="config.txt" />
+		<Unit filename="configuracion.cpp" />
 		<Unit filename="include/estructuras.h" />
 		<Unit filename="include/socket_y_sesion.h" />
 		<Unit filename="main.cpp" />
