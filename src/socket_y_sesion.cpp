@@ -20,10 +20,11 @@ Cómo se paquetizan? Recuerda que TCP es un stream y no paquetes como UDP*/
 void sesion::procesar_lectura()
 {
   string lectura = data_;
-  if(lectura.substr(0,3) == "ftp")
+  cout << lectura << endl;
+  if(lectura.substr(0,3) == "ftp") //esta solicitud *sólo* deben hacérsela al puerto 1339 (puerto ftp)
   {
     string archivo = lectura.substr(4);
-    cout << "ftp:" << archivo << endl;
+    //cout << "ftp:" << archivo << endl;
     enviar_archivo(archivo);
     return; //para evitar volver a leer
   }
@@ -31,15 +32,12 @@ void sesion::procesar_lectura()
   {
     string version_cliente = lectura.substr(8);
     string version_serv = cargar_valor("version");
+    cout << "VERSION CLIENTE==" << version_cliente << "\tVERSION SERVIDOR==" << version_serv << endl;
     if(version_cliente!=version_serv)
     {
-      cout << "veriones diferentes\n";
+      cout << "VERSIONES DIFERENTES\n";
       hacer_escritura("advertencia actualizar"); //advertencia + actualizar. son palabras clave
     }
-  }
-  else
-  {
-    cout << data_ << '\n';
   }
   memset(data_, '\0', longitud_maxima);
   hacer_lectura(); //siempre volvemos a "escuchar"
