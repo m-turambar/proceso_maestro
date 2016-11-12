@@ -26,18 +26,14 @@ void sesion::procesar_lectura()
     string archivo = lectura.substr(4);
     //cout << "ftp:" << archivo << endl;
     enviar_archivo(archivo);
-    return; //para evitar volver a leer
+    return; //para evitar volver a leer. De nuevo, a este bloque lógico sólo entra la instancia que escucha en 1339
   }
   else if(lectura.substr(0,7) == "version")
   {
-    string version_cliente = lectura.substr(8);
+    //string version_cliente = lectura.substr(8);
     string version_serv = cargar_valor("version");
-    cout << "VERSION CLIENTE==" << version_cliente << "\tVERSION SERVIDOR==" << version_serv << endl;
-    if(version_cliente!=version_serv)
-    {
-      cout << "VERSIONES DIFERENTES\n";
-      hacer_escritura("advertencia actualizar"); //advertencia + actualizar. son palabras clave
-    }
+    //cout << "VERSION CLIENTE==" << version_cliente << "\tVERSION SERVIDOR==" << version_serv << endl;
+    hacer_escritura("version " + version_serv);
   }
   memset(data_, '\0', longitud_maxima);
   hacer_lectura(); //siempre volvemos a "escuchar"
