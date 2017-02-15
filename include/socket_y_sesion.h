@@ -3,6 +3,7 @@
 
 #include "asio.hpp"
 #include "estructuras.h"
+#include "autenticacion.h"
 
 using asio::ip::tcp;
 using namespace std;
@@ -12,7 +13,8 @@ class sesion
 {
 public:
   sesion(tcp::socket socket)
-    : socket_(std::move(socket))
+    : socket_(std::move(socket)),
+      usuario_(nullptr)
   {
   }
 
@@ -30,6 +32,7 @@ private:
   enum {longitud_maxima = 4096};
   char data_[longitud_maxima];
   std::string str_;
+  std::unique_ptr<usuario> usuario_;
 };
 
 class servidor

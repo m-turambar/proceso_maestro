@@ -21,21 +21,27 @@ void usuario::cargar_usuarios_contrasenias(const char* fname)
   }
 }
 
-bool usuario::autenticar_usuario(string& usuario_pswd)
+/*Limpia el uso de nombres*/
+unique_ptr<usuario> usuario::autenticar_usuario(string& usuario_pswd)
 {
   stringstream sss(usuario_pswd);
   string usr;
   string ctrs;
   getline(sss, usr, ';');
   getline(sss, ctrs, ';');
+
   if(usr.empty() or ctrs.empty())
-    return false;
+    return nullptr;
+
   auto b = usuario::usuarios_validos.find(usr);
-  if(b != usuario::usuarios_validos.end()) {
-    if (usuario::usuarios_validos[usr] == ctrs) {
+
+  if(b != usuario::usuarios_validos.end())
+  {
+    if (usuario::usuarios_validos[usr] == ctrs)
+    {
       cout << usr << " ha iniciado sesion\n";
       /* instanciar un usuario aqui tal vez */
-      return true;
+      return make_unique<usuario>(usr, ctrs);
     }
     else {
       cout << "usuario " << usr << " ingreso contrasenia invalida\n";
@@ -43,12 +49,13 @@ bool usuario::autenticar_usuario(string& usuario_pswd)
   }
   else
     cout << "el usuario " << usr << " no existe\n";
-  return false;
+  return nullptr;
 }
 
-usuario::usuario(string& nombre)
+usuario::usuario(string& nombre, string& contrasenia)
 {
-  this->nombre = nombre;
+  this->nombre_ = nombre;
+  this->passwd_ = contrasenia;
 }
 
 usuario::~usuario()
