@@ -26,13 +26,14 @@ void sesion::procesar_lectura()
     string archivo = lectura.substr(4);
     //cout << "ftp:" << archivo << endl;
     enviar_archivo(archivo);
+    memset(data_, '\0', longitud_maxima);
     return; //para evitar volver a leer. De nuevo, a este bloque lógico sólo entra la instancia que escucha en 1339
   }
   else if(lectura.substr(0,7) == "version")
   {
     //string version_cliente = lectura.substr(8);
     string version_serv = cargar_valor("version");
-    //cout << "VERSION CLIENTE==" << version_cliente << "\tVERSION SERVIDOR==" << version_serv << endl;
+    //cout << "Cliente con version " << version_cliente << " solicita actualizacion" << version_serv << endl;
     hacer_escritura("version " + version_serv);
   }
   memset(data_, '\0', longitud_maxima);
@@ -70,8 +71,8 @@ void sesion::hacer_lectura()
     {
       /*y no volvemos a leer, si no, se cicla*/
       cout << "lectura ec=" << ec.value() << ":" << ec.message() << endl;
+      /*ec.value()==2 (End of file) típicamente significa que el otro lado cerró la conexión*/
     }
-
   });
 }
 
@@ -95,6 +96,8 @@ void sesion::hacer_escritura(std::string str)
 
 void sesion::hacer_escritura_terminante(std::string str)
 {
+  /*Hacemos que la variable str_ de la instancia de sesion contenga una copia de los datos a recibir.
+    Esto es acertado por que un lambda no debe contener referencias a datos temporales*/
   str_ = str;
   auto si_mismo(shared_from_this());
   asio::async_write(socket_, asio::buffer(str_.data(), str_.size()),
@@ -102,6 +105,8 @@ void sesion::hacer_escritura_terminante(std::string str)
   {
     if (!ec)
     {
+      cout << "Escritura terminante, cerrando socket "  << socket_.remote_endpoint().address().to_string()
+           << ":" << socket_.remote_endpoint().port() <<'\n';
       socket_.close();
     }
     else
@@ -113,6 +118,7 @@ void sesion::hacer_escritura_terminante(std::string str)
 
 //ssssssssssssssssssssssssssssssssssssssssssssssssssss
 
+/**Acepta conexiones entrantes y las mueve a un objeto sesión. Se llama a sí misma al terminar*/
 void servidor::hacer_aceptacion()
 {
   acceptor_.async_accept(socket_,
@@ -123,6 +129,10 @@ void servidor::hacer_aceptacion()
       auto sp = std::make_shared<sesion>(std::move(socket_));
       sp->iniciar();
       //causa error cout << "conexion establecida por " << socket_.remote_endpoint() << endl;
+    }
+    else
+    {
+      cout << "Error aceptacion:" << ec.value() << ":" << ec.message() << '\n';
     }
 
     hacer_aceptacion();

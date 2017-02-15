@@ -10,6 +10,10 @@
 #include "estructuras.h"
 #include "socket_y_sesion.h"
 
+#define PUERTO_CONTROL 1337
+#define PUERTO_FTP 1339
+#define PUERTO_CHAT 1341
+
 using asio::ip::tcp;
 using namespace std;
 
@@ -26,15 +30,15 @@ int main(int argc, char* argv[])
   {
     asio::io_service io_service;
 
-    servidor s(io_service, 1337);
-    servidor ftp(io_service, 1339); //aunque sean idénticos, no queremos solicitudes de control a media transferencia
-    cout << "pm escuchando en 127.0.0.1::1337" << endl;
+    servidor servidor_de_control(io_service, PUERTO_CONTROL);
+    servidor servidor_ftp(io_service, PUERTO_FTP); //aunque sean idénticos, no queremos solicitudes de control a media transferencia
+    cout << "pm escuchando en puertos "<< PUERTO_CONTROL << "(ctrl) y " << PUERTO_FTP << "(ftp)" << endl;
 
     io_service.run();
   }
   catch (std::exception& e)
   {
-    std::cerr << "Exception: " << e.what() << "\n";
+    std::cerr << "Excepcion en main proceso maestro: " << e.what() << "\n";
   }
 
   return 0;
