@@ -6,13 +6,38 @@
 #include <thread>
 #include <iterator>
 #include "socket_y_sesion.h"
+#include "autenticacion.h"
 
 extern string cargar_valor(string);
 
 void sesion::iniciar()
 {
   cout << socket_.remote_endpoint().address().to_string() << ":" << socket_.remote_endpoint().port() << '\n';
-  hacer_lectura();
+  iniciar_sesion_usuario();
+}
+
+void sesion::iniciar_sesion_usuario()
+{
+  auto si_mismo(shared_from_this());
+  socket_.async_read_some(asio::buffer(data_, longitud_maxima),
+    [this, si_mismo](std::error_code ec, std::size_t longitud)
+  {
+    if (!ec)
+    {
+      string lectura = data_;
+      if(usuario::autenticar_usuario(lectura))
+        hacer_lectura();
+      else
+        cout << "usuario invalido: " << lectura << endl;
+        socket_.close();
+    }
+    else
+    {
+      /*y no volvemos a leer, si no, se cicla*/
+      cout << "lectura ec=" << ec.value() << ":" << ec.message() << endl;
+      /*ec.value()==2 (End of file) típicamente significa que el otro lado cerró la conexión*/
+    }
+  });
 }
 
 /**Añade aquí entradas para procesar las lecturas entrantes

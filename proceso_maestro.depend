@@ -36,3 +36,52 @@
 	<fstream>
 	<sstream>
 
+1478561481 source:c:\users\turambar\documents\proyectos\proceso_maestro\configuracion.cpp
+	<iostream>
+	<fstream>
+	<sstream>
+
+1487184700 source:c:\users\turambar\documents\proyectos\proceso_maestro\main.cpp
+	<cstdlib>
+	<iostream>
+	<memory>
+	<utility>
+	<vector>
+	<map>
+	<fstream>
+	"asio.hpp"
+	"estructuras.h"
+	"socket_y_sesion.h"
+	"autenticacion.h"
+
+1478543747 c:\users\turambar\documents\proyectos\proceso_maestro\include\estructuras.h
+	<map>
+
+1487185413 c:\users\turambar\documents\proyectos\proceso_maestro\include\socket_y_sesion.h
+	"asio.hpp"
+	"estructuras.h"
+
+1478543747 source:c:\users\turambar\documents\proyectos\proceso_maestro\src\estructuras.cpp
+	"estructuras.h"
+
+1487185964 source:c:\users\turambar\documents\proyectos\proceso_maestro\src\socket_y_sesion.cpp
+	<iostream>
+	<cstring>
+	<cstdlib>
+	<fstream>
+	<future>
+	<thread>
+	<iterator>
+	"socket_y_sesion.h"
+	"autenticacion.h"
+
+1487185822 c:\users\turambar\documents\proyectos\proceso_maestro\include\autenticacion.h
+	<string>
+	<map>
+
+1487184678 source:c:\users\turambar\documents\proyectos\proceso_maestro\src\autenticacion.cpp
+	"autenticacion.h"
+	<fstream>
+	<sstream>
+	<stdexcept>
+

@@ -19,6 +19,7 @@ public:
   void iniciar();
 
 private:
+  void iniciar_sesion_usuario();
   void hacer_lectura();
   void hacer_escritura(std::string str);
   void hacer_escritura_terminante(std::string str);
