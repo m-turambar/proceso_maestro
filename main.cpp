@@ -9,6 +9,7 @@
 #include "asio.hpp"
 #include "estructuras.h"
 #include "socket_y_sesion.h"
+#include "autenticacion.h"
 
 #define PUERTO_CONTROL 1337
 #define PUERTO_FTP 1339
@@ -29,7 +30,7 @@ int main(int argc, char* argv[])
   try
   {
     asio::io_service io_service;
-
+    usuario::cargar_usuarios_contrasenias("usuarios_contrasenias.txt");
     servidor servidor_de_control(io_service, PUERTO_CONTROL);
     servidor servidor_ftp(io_service, PUERTO_FTP); //aunque sean idénticos, no queremos solicitudes de control a media transferencia
     cout << "pm escuchando en puertos "<< PUERTO_CONTROL << "(ctrl) y " << PUERTO_FTP << "(ftp)" << endl;
