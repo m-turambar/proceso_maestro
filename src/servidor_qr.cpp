@@ -1,3 +1,4 @@
+#include "servidor_qr.h"
 #include <iostream>
 #include <cstring>
 #include <cstdlib>
@@ -5,17 +6,16 @@
 #include <future>
 #include <thread>
 #include <iterator>
-#include "socket_y_sesion.h"
 
 extern string cargar_valor(string);
 
-void sesion::iniciar()
+void sesion_qr::iniciar()
 {
   cout << socket_.remote_endpoint().address().to_string() << ":" << socket_.remote_endpoint().port() << '\n';
   iniciar_sesion_usuario();
 }
 
-void sesion::iniciar_sesion_usuario()
+void sesion_qr::iniciar_sesion_usuario()
 {
   auto tu_mismo(shared_from_this());
   socket_.async_read_some(asio::buffer(data_, longitud_maxima),
@@ -24,9 +24,9 @@ void sesion::iniciar_sesion_usuario()
     if (!ec)
     {
       string lectura = data_;
-      usuario_ = usuario::autenticar_usuario(lectura); //que pasa si usuario;contraseña; llega dividido en dos paquetes?
+      usuario_ = usuario::autenticar_usuario(lectura);
       if(usuario_!=nullptr)
-        hacer_lectura();                               //el estatus correcto
+        hacer_lectura();
       else
       {
         cout << "usuario invalido: " << lectura << endl;
@@ -36,7 +36,7 @@ void sesion::iniciar_sesion_usuario()
     else
     {
       /*y no volvemos a leer, si no, se cicla*/
-      cout << "Error en inicio_sesion; error=" << ec.value() << ":" << ec.message() << endl;
+      cout << "inicio_sesion_qr ec=" << ec.value() << ":" << ec.message() << endl;
       /*ec.value()==2 (End of file) típicamente significa que el otro lado cerró la conexión*/
     }
   });
@@ -44,7 +44,7 @@ void sesion::iniciar_sesion_usuario()
 
 /**Añade aquí entradas para procesar las lecturas entrantes
 Cómo se paquetizan? Recuerda que TCP es un stream y no paquetes como UDP*/
-void sesion::procesar_lectura()
+void sesion_qr::procesar_lectura()
 {
   string lectura = data_;
   cout << lectura << endl;
@@ -67,13 +67,13 @@ void sesion::procesar_lectura()
   hacer_lectura(); //siempre volvemos a "escuchar"
 }
 
-void sesion::enviar_archivo(string archivo)
+void sesion_qr::enviar_archivo(string archivo)
 {
   string buf;
-  std::ifstream ifs(archivo/*, std::ios::binary*/);
+  std::ifstream ifs(archivo, std::ios::binary);
   if(!ifs)
   {
-    cout << "Error abriendo archivo " << archivo << '\n';
+    cout << "Error abriendo archivo:" << archivo << '\n';
     return;
   }
 
@@ -84,7 +84,7 @@ void sesion::enviar_archivo(string archivo)
   hacer_escritura_terminante(buf);
 }
 
-void sesion::hacer_lectura()
+void sesion_qr::hacer_lectura()
 {
   auto si_mismo(shared_from_this());
   socket_.async_read_some(asio::buffer(data_, longitud_maxima),
@@ -97,8 +97,8 @@ void sesion::hacer_lectura()
     else
     {
       /*y no volvemos a leer, si no, se cicla*/
-      if(ec.value()==10054 or ec.value()==2)
-        cout << usuario_->nombre() << " cerro sesion con ec " << ec.value() <<'\n';
+      if(ec.value()==10054)
+        cout << usuario_->nombre() << " cerro sesion_qr\n";
       else
         cout << "lectura ec=" << ec.value() << ":" << ec.message() << endl;
       /*ec.value()==2 (End of file) típicamente significa que el otro lado cerró la conexión*/
@@ -106,7 +106,7 @@ void sesion::hacer_lectura()
   });
 }
 
-void sesion::hacer_escritura(std::string str)
+void sesion_qr::hacer_escritura(std::string str)
 {
   str_ = str;
   auto si_mismo(shared_from_this());
@@ -124,9 +124,9 @@ void sesion::hacer_escritura(std::string str)
   });
 }
 
-void sesion::hacer_escritura_terminante(std::string str)
+void sesion_qr::hacer_escritura_terminante(std::string str)
 {
-  /*Hacemos que la variable str_ de la instancia de sesion contenga una copia de los datos a recibir.
+  /*Hacemos que la variable str_ de la instancia de sesion_qr contenga una copia de los datos a recibir.
     Esto es acertado por que un lambda no debe contener referencias a datos temporales*/
   str_ = str;
   auto si_mismo(shared_from_this());
@@ -146,17 +146,14 @@ void sesion::hacer_escritura_terminante(std::string str)
   });
 }
 
-//ssssssssssssssssssssssssssssssssssssssssssssssssssss
-
-/**Acepta conexiones entrantes y las mueve a un objeto sesión. Se llama a sí misma al terminar*/
-void servidor::hacer_aceptacion()
+void servidor_qr::hacer_aceptacion()
 {
   acceptor_.async_accept(socket_,
     [this](std::error_code ec)
   {
     if (!ec)
     {
-      auto sp = std::make_shared<sesion>(std::move(socket_));
+      auto sp = std::make_shared<sesion_qr>(std::move(socket_));
       sp->iniciar();
       //causa error cout << "conexion establecida por " << socket_.remote_endpoint() << endl;
     }

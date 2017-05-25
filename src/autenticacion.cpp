@@ -44,7 +44,7 @@ unique_ptr<usuario> usuario::autenticar_usuario(string& usuario_pswd)
       return make_unique<usuario>(usr, ctrs);
     }
     else {
-      cout << "usuario " << usr << " ingreso contrasenia invalida\n";
+      cout << "usuario " << usr << " ingreso contrasenia invalida " << ctrs << "\n";
     }
   }
   else

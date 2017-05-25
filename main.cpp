@@ -11,9 +11,8 @@
 #include "socket_y_sesion.h"
 #include "autenticacion.h"
 
-#define PUERTO_CONTROL 1337
-#define PUERTO_FTP 1339
-#define PUERTO_CHAT 1341
+#define PUERTO_CONTROL 3214
+#define PUERTO_FTP 3215
 
 using asio::ip::tcp;
 using namespace std;
