@@ -47,6 +47,11 @@ Cómo se paquetizan? Recuerda que TCP es un stream y no paquetes como UDP*/
 void sesion::procesar_lectura()
 {
   string lectura = data_;
+
+  //pueden haber casos donde la string viene con un caracter anexado al final que cause errores
+  if(lectura.back() == 0xA) //LF, por si la solicitud viene de la terminal. Este error ocurria con ncat
+    lectura.pop_back();
+
   cout << lectura << endl;
   if(lectura.substr(0,3) == "ftp") //esta solicitud *sólo* deben hacérsela al puerto 1339 (puerto ftp)
   {
