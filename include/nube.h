@@ -5,6 +5,7 @@
 #include <map>
 #include <memory>
 #include <set>
+#include <vector>
 
 /**La idea es que varios servicios en la nube estén suscritos a este proceso.
 La dificultad yace en los protocolos de comunicación que existirán entre ellos.
@@ -19,7 +20,7 @@ namespace nube
   extern std::map<std::string, std::weak_ptr<sesion> > servicios;
 
   /**pueden haber varios sockets suscritos al mismo servicio, como consumidores*/
-  extern std::map<std::string, std::set<std::weak_ptr<sesion> > > suscritos;
+  extern std::map<std::string, std::vector<std::weak_ptr<sesion> > > suscritos;
 }
 
 #endif // NUBE_H

@@ -70,19 +70,36 @@ void sesion::procesar_lectura()
   }
 
   /*Problema: cómo suscribes a un ente y luego le transfieres el stream? despues de suscribirte las operaciones de control terminan*/
-  else if(lectura.substr(0,9) == "suscribir") //este socket proveerá un servicio de ahora en adelante
+  else if(lectura.substr(0,7) == "ofrecer") //este socket proveerá un servicio de ahora en adelante
   {
     /* Añadimos un apuntador a este socket al mapa global */
-    string nombre_servicio = lectura.substr(10);
+    string nombre_servicio = lectura.substr(8);
     nombre_servicio_ = nombre_servicio;
     nube::servicios.emplace(make_pair(nombre_servicio_, shared_from_this())); //será correcto?
     procesar_ = false; //las proximas lecturas pasaran directo a la otra branch, la de forwardeo
   }
 
-  //varios entes pueden consumir a un suscritor -> consumen su servicio
-  else if(lectura.substr(0,8) == "consumir") //este socket consumirá un servicio de ahora en adelante
+  //varios entes pueden subscribirse al mismo servicio
+  else if(lectura.substr(0,9) == "suscribir") //este socket consumirá un servicio de ahora en adelante
   {
-    string a_cual = lectura.substr(9);
+    string a_cual = lectura.substr(10);
+    try
+    {
+      //obtenemos una referencia al grupo de sockets suscritos a este nombre de servicio
+      vector<weak_ptr<sesion>>& grupo = nube::suscritos.at(a_cual);
+      grupo.emplace_back(shared_from_this() );
+    }
+    catch(out_of_range& e) //probablemente el grupo no existia (nadie se habia suscrito a ese servico)
+    {
+      vector<weak_ptr<sesion>> nvo_grupo;
+      nvo_grupo.emplace_back(shared_from_this());
+      nube::suscritos.emplace(make_pair(a_cual, nvo_grupo));
+    }
+    catch(...)
+    {
+      cout << "excepcion extraordinaria durante la suscripcion\n";
+    }
+    //procesar_=false; //podriamos entrar a un escenario de transmision unidireccional
     /* Un socket que consume un servicio también re rutea?*/
   }
 
@@ -121,9 +138,16 @@ void sesion::hacer_lectura()
 /**Para todos los suscritos a mi servicio, les re-transmito el mensaje*/
 void sesion::re_routear()
 {
-  set<weak_ptr<sesion>> mis_suscritos = nube::servicios.at(nombre_servicio_)
-  for(auto wp)
-
+cout << nombre_servicio_ << " re-routeando " << data_ << '\n';
+try{
+  vector<weak_ptr<sesion>> mis_suscritos = nube::suscritos.at(nombre_servicio_);
+  for(weak_ptr<sesion> wp : mis_suscritos)
+  {
+    shared_ptr<sesion> sp = wp.lock();
+    sp->hacer_escritura(data_);
+  }
+}
+catch(out_of_range& e) {}
   memset(data_, '\0', longitud_maxima);
   hacer_lectura(); //siempre volvemos a "escuchar"
 }

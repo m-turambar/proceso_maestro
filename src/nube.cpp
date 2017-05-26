@@ -6,4 +6,4 @@ using namespace std;
 map<string, weak_ptr<sesion> > nube::servicios;
 
 /*e.g. los suscritos a bascula1 son sesion1, sesion2, sesion3*/
-map<string, set<weak_ptr<sesion> > > nube::suscritos;
+map<string, vector<weak_ptr<sesion> > > nube::suscritos;
