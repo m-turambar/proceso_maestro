@@ -6,6 +6,9 @@
 #include <thread>
 #include <iterator>
 #include "socket_y_sesion.h"
+#include "nube.h"
+
+using namespace std;
 
 extern string cargar_valor(string);
 
@@ -47,6 +50,8 @@ Cómo se paquetizan? Recuerda que TCP es un stream y no paquetes como UDP*/
 void sesion::procesar_lectura()
 {
   string lectura = data_;
+  if(lectura.back() == 0xA) //LF, por si la solicitud viene de la terminal. Este error ocurria con ncat
+    lectura.pop_back();
   cout << lectura << endl;
   if(lectura.substr(0,3) == "ftp") //esta solicitud *sólo* deben hacérsela al puerto 1339 (puerto ftp)
   {
@@ -63,25 +68,25 @@ void sesion::procesar_lectura()
     //cout << "Cliente con version " << version_cliente << " solicita actualizacion" << version_serv << endl;
     hacer_escritura("version " + version_serv);
   }
-  memset(data_, '\0', longitud_maxima);
-  hacer_lectura(); //siempre volvemos a "escuchar"
-}
 
-void sesion::enviar_archivo(string archivo)
-{
-  string buf;
-  std::ifstream ifs(archivo/*, std::ios::binary*/);
-  if(!ifs)
+  /*Problema: cómo suscribes a un ente y luego le transfieres el stream? despues de suscribirte las operaciones de control terminan*/
+  else if(lectura.substr(0,9) == "suscribir")
   {
-    cout << "Error abriendo archivo " << archivo << '\n';
-    return;
+    /* Añadimos un apuntador a este socket al mapa global */
+    string nombre_servicio = lectura.substr(10);
+    nombre_servicio_ = nombre_servicio;
+    nube::servicios.emplace(make_pair(nombre_servicio_, shared_from_this())); //será correcto?
+    procesar_ = false; //las proximas lecturas pasaran directo a la otra branch, la de forwardeo
   }
 
-  ifs.seekg(0, std::ios_base::end);
-  buf.resize(ifs.tellg()); /*Reservamos la memoria*/
-  ifs.seekg(0); //regresamos el iterador de ifs a su inicio
-  ifs.read(&buf[0], buf.size()); /*Leemos el archivo de golpe*/
-  hacer_escritura_terminante(buf);
+  //varios entes pueden consumir a un suscritor -> consumen su servicio
+  else if(lectura.substr(0,8) == "consumir")
+  {
+    /* Un socket que consume un servicio también re rutea?*/
+  }
+
+  memset(data_, '\0', longitud_maxima);
+  hacer_lectura(); //siempre volvemos a "escuchar"
 }
 
 void sesion::hacer_lectura()
@@ -92,7 +97,13 @@ void sesion::hacer_lectura()
   {
     if (!ec)
     {
-      procesar_lectura();
+      if(procesar_)
+        procesar_lectura(); /* soy un socket normal, de control. Proceso la lectura y vuelvo a leer (procesar lectura lee al final)*/
+      else
+      {
+        /*soy un socket puente, re ruteo a los interesados*/
+        re_routear();
+      }
     }
     else
     {
@@ -104,6 +115,12 @@ void sesion::hacer_lectura()
       /*ec.value()==2 (End of file) típicamente significa que el otro lado cerró la conexión*/
     }
   });
+}
+
+void sesion::re_routear()
+{
+  auto si_mismo(shared_from_this());
+
 }
 
 void sesion::hacer_escritura(std::string str)
@@ -144,6 +161,26 @@ void sesion::hacer_escritura_terminante(std::string str)
       cout << "Error escritura:" << ec.value() << ":" << ec.message() << '\n';
     }
   });
+}
+
+void sesion::enviar_archivo(string archivo)
+{
+  string buf;
+  std::ifstream ifs(archivo/*, std::ios::binary*/);
+  if(!ifs.is_open())
+  {
+    cout << "longitud de string: " << archivo.size() << '\t';
+    for(auto c : archivo)
+      cout << c << ':' << (int)c << '\n';
+    cout << "Error abriendo archivo " << archivo << strerror(errno) << '\n';
+    return;
+  }
+
+  ifs.seekg(0, std::ios_base::end);
+  buf.resize(ifs.tellg()); /*Reservamos la memoria*/
+  ifs.seekg(0); //regresamos el iterador de ifs a su inicio
+  ifs.read(&buf[0], buf.size()); /*Leemos el archivo de golpe*/
+  hacer_escritura_terminante(buf);
 }
 
 //ssssssssssssssssssssssssssssssssssssssssssssssssssss

@@ -6,10 +6,9 @@
 #include "autenticacion.h"
 
 using asio::ip::tcp;
-using namespace std;
 
 class sesion
-  : public enable_shared_from_this<sesion>
+  : public std::enable_shared_from_this<sesion>
 {
 public:
   sesion(tcp::socket socket)
@@ -26,13 +25,16 @@ private:
   void hacer_escritura(std::string str);
   void hacer_escritura_terminante(std::string str);
   void procesar_lectura();
-  void enviar_archivo(string archivo);
+  void enviar_archivo(std::string archivo);
+  void re_routear();
 
   tcp::socket socket_;
   enum {longitud_maxima = 4096};
-  char data_[longitud_maxima];
+  char data_[longitud_maxima]; //rx
   std::string str_;
   std::unique_ptr<usuario> usuario_;
+  bool procesar_{true};
+  std::string nombre_servicio_{};
 };
 
 class servidor

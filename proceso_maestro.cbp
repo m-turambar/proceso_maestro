@@ -12,7 +12,9 @@
 				<Option type="1" />
 				<Option compiler="gcc" />
 				<Compiler>
+					<Add option="-std=c++14" />
 					<Add option="-g" />
+					<Add option="-DASIO_STANDALONE" />
 					<Add directory="include" />
 				</Compiler>
 				<Linker>
@@ -27,10 +29,12 @@
 		<Unit filename="configuracion.cpp" />
 		<Unit filename="include/autenticacion.h" />
 		<Unit filename="include/estructuras.h" />
+		<Unit filename="include/nube.h" />
 		<Unit filename="include/socket_y_sesion.h" />
 		<Unit filename="main.cpp" />
 		<Unit filename="src/autenticacion.cpp" />
 		<Unit filename="src/estructuras.cpp" />
+		<Unit filename="src/nube.cpp" />
 		<Unit filename="src/socket_y_sesion.cpp" />
 		<Unit filename="usuarios_contrasenias.txt" />
 		<Extensions>
