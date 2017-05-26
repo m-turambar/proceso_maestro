@@ -70,7 +70,7 @@ void sesion::procesar_lectura()
   }
 
   /*Problema: cómo suscribes a un ente y luego le transfieres el stream? despues de suscribirte las operaciones de control terminan*/
-  else if(lectura.substr(0,9) == "suscribir")
+  else if(lectura.substr(0,9) == "suscribir") //este socket proveerá un servicio de ahora en adelante
   {
     /* Añadimos un apuntador a este socket al mapa global */
     string nombre_servicio = lectura.substr(10);
@@ -80,8 +80,9 @@ void sesion::procesar_lectura()
   }
 
   //varios entes pueden consumir a un suscritor -> consumen su servicio
-  else if(lectura.substr(0,8) == "consumir")
+  else if(lectura.substr(0,8) == "consumir") //este socket consumirá un servicio de ahora en adelante
   {
+    string a_cual = lectura.substr(9);
     /* Un socket que consume un servicio también re rutea?*/
   }
 
@@ -117,10 +118,14 @@ void sesion::hacer_lectura()
   });
 }
 
+/**Para todos los suscritos a mi servicio, les re-transmito el mensaje*/
 void sesion::re_routear()
 {
-  auto si_mismo(shared_from_this());
+  set<weak_ptr<sesion>> mis_suscritos = nube::servicios.at(nombre_servicio_)
+  for(auto wp)
 
+  memset(data_, '\0', longitud_maxima);
+  hacer_lectura(); //siempre volvemos a "escuchar"
 }
 
 void sesion::hacer_escritura(std::string str)
