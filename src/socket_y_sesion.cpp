@@ -15,6 +15,7 @@ extern string cargar_valor(string);
 void sesion::iniciar()
 {
   cout << socket_.remote_endpoint().address().to_string() << ":" << socket_.remote_endpoint().port() << '\n';
+  hacer_escritura("por favor inicia sesion:");
   iniciar_sesion_usuario();
 }
 
@@ -29,7 +30,12 @@ void sesion::iniciar_sesion_usuario()
       string lectura = data_;
       usuario_ = usuario::autenticar_usuario(lectura); //que pasa si usuario;contraseña; llega dividido en dos paquetes?
       if(usuario_!=nullptr)
+      {
+        memset(data_, '\0', longitud_maxima);
+        hacer_escritura("bienvenido " + usuario_->nombre() + '\n');
         hacer_lectura();                               //el estatus correcto
+      }
+
       else
       {
         cout << "usuario invalido: " << lectura << endl;
@@ -50,9 +56,11 @@ Cómo se paquetizan? Recuerda que TCP es un stream y no paquetes como UDP*/
 void sesion::procesar_lectura()
 {
   string lectura = data_;
-  if(lectura.back() == 0xA) //LF, por si la solicitud viene de la terminal. Este error ocurria con ncat
+  if(lectura.back() == 0xA) //LF, por el mensaje viene de la terminal. Este error ocurria con ncat. Causaba errores con ftp y version
     lectura.pop_back();
   cout << lectura << endl;
+
+  /**Los mensajes de control no queremos retransmitirlos*/
   if(lectura.substr(0,3) == "ftp") //esta solicitud *sólo* deben hacérsela al puerto 1339 (puerto ftp)
   {
     string archivo = lectura.substr(4);
@@ -76,14 +84,90 @@ void sesion::procesar_lectura()
     string nombre_servicio = lectura.substr(8);
     nombre_servicio_ = nombre_servicio;
     nube::servicios.emplace(make_pair(nombre_servicio_, shared_from_this())); //será correcto?
-    procesar_ = false; //las proximas lecturas pasaran directo a la otra branch, la de forwardeo
+    proveedor_ = true; //las proximas lecturas pasaran directo a la otra branch, la de forwardeo
   }
 
   //varios entes pueden subscribirse al mismo servicio
   else if(lectura.substr(0,9) == "suscribir") //este socket consumirá un servicio de ahora en adelante
   {
     string a_cual = lectura.substr(10);
-    try
+    subscribirse(a_cual);
+    //procesar_=false; //podriamos entrar a un escenario de transmision unidireccional
+    /* Un socket que consume un servicio también re rutea?*/
+  }
+  else
+  {
+    if(proveedor_)
+    {
+      /*soy un socket puente, re ruteo a los interesados*/
+      re_routear_a_clientes();
+    }
+    if(consumidor_)
+    {
+      re_routear_a_proveedores();
+    }
+  }
+}
+
+void sesion::hacer_lectura()
+{
+  auto si_mismo(shared_from_this());
+  socket_.async_read_some(asio::buffer(data_, longitud_maxima),
+    [this, si_mismo](std::error_code ec, std::size_t longitud)
+  {
+    if (!ec)
+    {
+      procesar_lectura(); /* soy un socket normal, de control. Proceso la lectura y vuelvo a leer (procesar lectura lee al final)*/
+
+      memset(data_, '\0', longitud_maxima);
+      hacer_lectura(); //siempre volvemos a "escuchar"
+    }
+    else
+    {
+      /*y no volvemos a leer, si no, se cicla*/
+      if(ec.value()==10054 or ec.value()==2)
+        cout << usuario_->nombre() << " cerro sesion con ec " << ec.value() <<'\n';
+      else
+        cout << socket_.remote_endpoint().address().to_string() << ":" << socket_.remote_endpoint().port() <<"->lectura ec=" << ec.value() << ":" << ec.message() << endl;
+      /*ec.value()==2 (End of file) típicamente significa que el otro lado cerró la conexión*/
+    }
+  });
+}
+
+/**Para todos los suscritos a mi servicio, les re-transmito el mensaje*/
+void sesion::re_routear_a_clientes()
+{
+  cout << nombre_servicio_ << ":re-routeando " << data_;
+  try {
+    vector<weak_ptr<sesion>> mis_suscritos = nube::suscritos.at(nombre_servicio_);
+    for(weak_ptr<sesion> wp : mis_suscritos)
+    {
+      shared_ptr<sesion> sp = wp.lock();
+      sp->hacer_escritura(data_);
+    }
+  }
+  catch(out_of_range& e) { cout << nombre_servicio_ <<":fuera de rango\n"; }
+  catch(...) { cout << "error desconocido en re_ruteo\n"; }
+}
+
+void sesion::re_routear_a_proveedores()
+{
+  for(string s : suscripciones_)
+    {
+      try{
+        auto wp = nube::servicios.at(s); //estamos suscritos a s. obtenemos un pointer al socket que provee ese servicio
+        auto sp = wp.lock();
+        sp->hacer_escritura(data_);
+      }
+      /*Puede que nadie provea el servicio al que estamos suscritos. Obtendremos este error*/
+      catch(out_of_range& e) { cout << "O.O.R en retransmision a " << s << '\n'; }
+      catch(...) { cout << "error desconocido en RTRANS\n"; }
+    }
+}
+
+void sesion::subscribirse(std::string a_cual)
+{
+  try
     {
       //obtenemos una referencia al grupo de sockets suscritos a este nombre de servicio
       vector<weak_ptr<sesion>>& grupo = nube::suscritos.at(a_cual);
@@ -99,63 +183,15 @@ void sesion::procesar_lectura()
     {
       cout << "excepcion extraordinaria durante la suscripcion\n";
     }
-    //procesar_=false; //podriamos entrar a un escenario de transmision unidireccional
-    /* Un socket que consume un servicio también re rutea?*/
-  }
-
-  memset(data_, '\0', longitud_maxima);
-  hacer_lectura(); //siempre volvemos a "escuchar"
-}
-
-void sesion::hacer_lectura()
-{
-  auto si_mismo(shared_from_this());
-  socket_.async_read_some(asio::buffer(data_, longitud_maxima),
-    [this, si_mismo](std::error_code ec, std::size_t longitud)
-  {
-    if (!ec)
-    {
-      if(procesar_)
-        procesar_lectura(); /* soy un socket normal, de control. Proceso la lectura y vuelvo a leer (procesar lectura lee al final)*/
-      else
-      {
-        /*soy un socket puente, re ruteo a los interesados*/
-        re_routear();
-      }
-    }
-    else
-    {
-      /*y no volvemos a leer, si no, se cicla*/
-      if(ec.value()==10054 or ec.value()==2)
-        cout << usuario_->nombre() << " cerro sesion con ec " << ec.value() <<'\n';
-      else
-        cout << "lectura ec=" << ec.value() << ":" << ec.message() << endl;
-      /*ec.value()==2 (End of file) típicamente significa que el otro lado cerró la conexión*/
-    }
-  });
-}
-
-/**Para todos los suscritos a mi servicio, les re-transmito el mensaje*/
-void sesion::re_routear()
-{
-cout << nombre_servicio_ << " re-routeando " << data_ << '\n';
-try{
-  vector<weak_ptr<sesion>> mis_suscritos = nube::suscritos.at(nombre_servicio_);
-  for(weak_ptr<sesion> wp : mis_suscritos)
-  {
-    shared_ptr<sesion> sp = wp.lock();
-    sp->hacer_escritura(data_);
-  }
-}
-catch(out_of_range& e) {}
-  memset(data_, '\0', longitud_maxima);
-  hacer_lectura(); //siempre volvemos a "escuchar"
+    suscripciones_.emplace_back(a_cual);
+    consumidor_ = true;
 }
 
 void sesion::hacer_escritura(std::string str)
 {
   str_ = str;
   auto si_mismo(shared_from_this());
+
   asio::async_write(socket_, asio::buffer(str_.data(), str_.size()),
     [this, si_mismo](std::error_code ec, std::size_t /*length*/)
   {
@@ -222,6 +258,8 @@ void servidor::hacer_aceptacion()
   {
     if (!ec)
     {
+      asio::socket_base::keep_alive opcion(true);
+      socket_.set_option(opcion);
       auto sp = std::make_shared<sesion>(std::move(socket_));
       sp->iniciar();
       //causa error cout << "conexion establecida por " << socket_.remote_endpoint() << endl;

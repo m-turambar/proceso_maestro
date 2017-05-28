@@ -11,7 +11,8 @@
 La dificultad yace en los protocolos de comunicación que existirán entre ellos.
 Una vez que tengo re-ruteo, pierdo control.
 Una vez que pierdo control.
-Una vez que consumo un servicio, como lo dejo de consumir? Cierro el socket? Parece ser lo más efectivo*/
+Una vez que consumo un servicio, como lo dejo de consumir? Cierro el socket? Parece ser lo más efectivo
+Como reduzco el overhead de transmitir a suscripciones que no tengo*/
 
 namespace nube
 {

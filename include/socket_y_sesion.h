@@ -26,15 +26,19 @@ private:
   void hacer_escritura_terminante(std::string str);
   void procesar_lectura();
   void enviar_archivo(std::string archivo);
-  void re_routear();
+  void re_routear_a_clientes();
+  void re_routear_a_proveedores();
+  void subscribirse(std::string a_cual);
 
   tcp::socket socket_;
   enum {longitud_maxima = 4096};
   char data_[longitud_maxima]; //rx
   std::string str_;
   std::unique_ptr<usuario> usuario_;
-  bool procesar_{true};
-  std::string nombre_servicio_{};
+  bool proveedor_{false};
+  bool consumidor_{false};
+  std::string nombre_servicio_{}; //que yo proveo, y no necesariamente debo proveerlo
+  std::vector<std::string> suscripciones_; //a qué estoy suscrito / qué consumo?
 };
 
 class servidor
