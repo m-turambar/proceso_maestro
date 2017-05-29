@@ -103,6 +103,10 @@ void sesion::procesar_lectura()
       s="Sin servicios";
     hacer_escritura(s);
   }
+  else if(lectura.substr(0,5)=="debug")
+  {
+    nube::imprimir_mapas();
+  }
   else
   {
     if(proveedor_)
@@ -147,11 +151,19 @@ void sesion::re_routear_a_clientes()
 {
   //cout << nombre_servicio_ << ":re-routeando " << data_;
   try {
-    vector<weak_ptr<sesion>>& mis_suscritos = nube::suscritos.at(nombre_servicio_);
-    for(weak_ptr<sesion> wp : mis_suscritos)
+    if(nube::suscritos.find(nombre_servicio_) != nube::suscritos.end())
     {
-      shared_ptr<sesion> sp = wp.lock();
-      sp->hacer_escritura(data_);
+      vector<weak_ptr<sesion>>& mis_suscritos = nube::suscritos.at(nombre_servicio_);
+      for(weak_ptr<sesion> wp : mis_suscritos)
+      {
+        shared_ptr<sesion> sp = wp.lock();
+        if(sp!=nullptr)
+          sp->hacer_escritura(data_);
+      }
+    }
+    else
+    {
+      cout << nombre_servicio_ <<":sin clientes suscritos\n";
     }
   }
   catch(std::out_of_range const& e) { cout << nombre_servicio_ <<":sin clientes suscritos\n"; }
@@ -164,9 +176,13 @@ void sesion::re_routear_a_proveedores()
   for(string s : suscripciones_)
     {
       try{
-        auto wp = nube::servicios.at(s); //estamos suscritos a s. obtenemos un pointer al socket que provee ese servicio
-        auto sp = wp.lock();
-        sp->hacer_escritura(data_);
+        if(nube::servicios.find(s) != nube::servicios.end() )
+        {
+          auto wp = nube::servicios.at(s); //estamos suscritos a s. obtenemos un pointer al socket que provee ese servicio
+          auto sp = wp.lock();
+          if(sp!=nullptr)
+            sp->hacer_escritura(data_);
+        }
       }
       /*Puede que nadie provea el servicio al que estamos suscritos. Obtendremos este error*/
       catch(std::out_of_range const& e) { cout << s <<":nadie provee este servicio"<< '\n'; }
@@ -180,17 +196,23 @@ void sesion::subscribirse(std::string a_cual)
   try
     {
       //obtenemos una referencia al grupo de sockets suscritos a este nombre de servicio
-      vector<weak_ptr<sesion>>& grupo = nube::suscritos.at(a_cual);
-      grupo.emplace_back(shared_from_this() );
+      if(nube::suscritos.find(a_cual) != nube::suscritos.end() )
+      {
+        vector<weak_ptr<sesion>>& grupo = nube::suscritos.at(a_cual);
+        grupo.emplace_back(shared_from_this() );
+      }
+      else
+      {
+        cout << a_cual << ":el grupo no existe, creandolo\n";
+        vector<weak_ptr<sesion>> nvo_grupo;
+        nvo_grupo.emplace_back(shared_from_this());
+        nube::suscritos.emplace(make_pair(a_cual, nvo_grupo));
+      }
+
     }
     catch(::std::out_of_range const& e) //probablemente el grupo no existia (nadie se habia suscrito a ese servico)
     {
-      cout << "el grupo:" << a_cual << " no existe, creandolo\n";
-      //for(char c : a_cual)
-        //cout << c << "==" << int(c) << '\n';
-      vector<weak_ptr<sesion>> nvo_grupo;
-      nvo_grupo.emplace_back(shared_from_this());
-      nube::suscritos.emplace(make_pair(a_cual, nvo_grupo));
+      cout << "o-o-r\n";
     }
     catch(...)
     {
@@ -203,7 +225,10 @@ void sesion::subscribirse(std::string a_cual)
 void sesion::ofrecer(std::string ofrecer_que)
 {
     nombre_servicio_ = ofrecer_que;
-    nube::servicios.emplace(make_pair(nombre_servicio_, shared_from_this())); //será correcto?
+    if(nube::servicios.find(ofrecer_que) != nube::servicios.end() )
+      nube::servicios.at(ofrecer_que) = shared_from_this();
+    else
+      nube::servicios.emplace(make_pair(nombre_servicio_, shared_from_this())); //será correcto?
     proveedor_ = true; //las proximas lecturas pasaran directo a la otra branch, la de forwardeo
 }
 

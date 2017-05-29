@@ -22,6 +22,7 @@ namespace nube
 
   /**pueden haber varios sockets suscritos al mismo servicio, como consumidores*/
   extern std::map<std::string, std::vector<std::weak_ptr<sesion> > > suscritos;
+  void imprimir_mapas();
 }
 
 #endif // NUBE_H
