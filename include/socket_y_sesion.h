@@ -29,6 +29,7 @@ private:
   void re_routear_a_clientes();
   void re_routear_a_proveedores();
   void subscribirse(std::string a_cual);
+  void ofrecer(std::string ofrecer_que);
 
   tcp::socket socket_;
   enum {longitud_maxima = 4096};

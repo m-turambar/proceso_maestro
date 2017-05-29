@@ -82,9 +82,7 @@ void sesion::procesar_lectura()
   {
     /* Añadimos un apuntador a este socket al mapa global */
     string nombre_servicio = lectura.substr(8);
-    nombre_servicio_ = nombre_servicio;
-    nube::servicios.emplace(make_pair(nombre_servicio_, shared_from_this())); //será correcto?
-    proveedor_ = true; //las proximas lecturas pasaran directo a la otra branch, la de forwardeo
+    ofrecer(nombre_servicio);
   }
 
   //varios entes pueden subscribirse al mismo servicio
@@ -94,6 +92,16 @@ void sesion::procesar_lectura()
     subscribirse(a_cual);
     //procesar_=false; //podriamos entrar a un escenario de transmision unidireccional
     /* Un socket que consume un servicio también re rutea?*/
+  }
+  else if(lectura.substr(0,9)=="servicios")
+  {
+    string s;
+    for(auto it = nube::servicios.begin(); it != nube::servicios.end(); ++it)
+      s += it->first +' ';
+
+    if(s==string())
+      s="Sin servicios";
+    hacer_escritura(s);
   }
   else
   {
@@ -137,16 +145,17 @@ void sesion::hacer_lectura()
 /**Para todos los suscritos a mi servicio, les re-transmito el mensaje*/
 void sesion::re_routear_a_clientes()
 {
-  cout << nombre_servicio_ << ":re-routeando " << data_;
+  //cout << nombre_servicio_ << ":re-routeando " << data_;
   try {
-    vector<weak_ptr<sesion>> mis_suscritos = nube::suscritos.at(nombre_servicio_);
+    vector<weak_ptr<sesion>>& mis_suscritos = nube::suscritos.at(nombre_servicio_);
     for(weak_ptr<sesion> wp : mis_suscritos)
     {
       shared_ptr<sesion> sp = wp.lock();
       sp->hacer_escritura(data_);
     }
   }
-  catch(out_of_range& e) { cout << nombre_servicio_ <<":fuera de rango\n"; }
+  catch(std::out_of_range const& e) { cout << nombre_servicio_ <<":sin clientes suscritos\n"; }
+  catch(std::exception const& e) { cout << nombre_servicio_ << ':' << e.what() <<"\n"; }
   catch(...) { cout << "error desconocido en re_ruteo\n"; }
 }
 
@@ -160,8 +169,9 @@ void sesion::re_routear_a_proveedores()
         sp->hacer_escritura(data_);
       }
       /*Puede que nadie provea el servicio al que estamos suscritos. Obtendremos este error*/
-      catch(out_of_range& e) { cout << "O.O.R en retransmision a " << s << '\n'; }
-      catch(...) { cout << "error desconocido en RTRANS\n"; }
+      catch(std::out_of_range const& e) { cout << s <<":nadie provee este servicio"<< '\n'; }
+      catch(std::exception const& e) { cout << s << ':' << e.what() <<"\n"; }
+      catch(...) { cout << "error desconocido en re_rutear_a_proveedores\n"; }
     }
 }
 
@@ -173,8 +183,11 @@ void sesion::subscribirse(std::string a_cual)
       vector<weak_ptr<sesion>>& grupo = nube::suscritos.at(a_cual);
       grupo.emplace_back(shared_from_this() );
     }
-    catch(out_of_range& e) //probablemente el grupo no existia (nadie se habia suscrito a ese servico)
+    catch(::std::out_of_range const& e) //probablemente el grupo no existia (nadie se habia suscrito a ese servico)
     {
+      cout << "el grupo:" << a_cual << " no existe, creandolo\n";
+      //for(char c : a_cual)
+        //cout << c << "==" << int(c) << '\n';
       vector<weak_ptr<sesion>> nvo_grupo;
       nvo_grupo.emplace_back(shared_from_this());
       nube::suscritos.emplace(make_pair(a_cual, nvo_grupo));
@@ -185,6 +198,13 @@ void sesion::subscribirse(std::string a_cual)
     }
     suscripciones_.emplace_back(a_cual);
     consumidor_ = true;
+}
+
+void sesion::ofrecer(std::string ofrecer_que)
+{
+    nombre_servicio_ = ofrecer_que;
+    nube::servicios.emplace(make_pair(nombre_servicio_, shared_from_this())); //será correcto?
+    proveedor_ = true; //las proximas lecturas pasaran directo a la otra branch, la de forwardeo
 }
 
 void sesion::hacer_escritura(std::string str)
