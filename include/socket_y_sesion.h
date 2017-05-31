@@ -30,16 +30,20 @@ private:
   void re_routear_a_proveedores();
   void subscribirse(std::string a_cual);
   void ofrecer(std::string ofrecer_que);
+  void retransmitir(std::shared_ptr<std::vector<char>> copia); //se hace una copia del buffer rx y se guarda en el free store de antemano
+
 
   tcp::socket socket_;
-  enum {longitud_maxima = 4096};
+  enum {longitud_maxima = 8192}; /*tal vez usar un vector para ajustar el tamaño de buffer segun la aplicacion*/
   char data_[longitud_maxima]; //rx
+  std::size_t sz_rx_ult_{0};
   std::string str_;
   std::unique_ptr<usuario> usuario_;
   bool proveedor_{false};
   bool consumidor_{false};
   std::string nombre_servicio_{}; //que yo proveo, y no necesariamente debo proveerlo
   std::vector<std::string> suscripciones_; //a qué estoy suscrito / qué consumo?
+  bool muting_{false};
 };
 
 class servidor

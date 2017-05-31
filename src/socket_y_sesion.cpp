@@ -58,7 +58,9 @@ void sesion::procesar_lectura()
   string lectura = data_;
   if(lectura.back() == 0xA) //LF, por el mensaje viene de la terminal. Este error ocurria con ncat. Causaba errores con ftp y version
     lectura.pop_back();
-  cout << lectura << endl;
+
+  if(!muting_)
+    cout << lectura << '\n';
 
   /**Los mensajes de control no queremos retransmitirlos*/
   if(lectura.substr(0,3) == "ftp") //esta solicitud *sólo* deben hacérsela al puerto 1339 (puerto ftp)
@@ -129,6 +131,8 @@ void sesion::hacer_lectura()
   {
     if (!ec)
     {
+      sz_rx_ult_ = longitud;
+      //cout << "leidos: " << longitud << "\t";
       procesar_lectura(); /* soy un socket normal, de control. Proceso la lectura y vuelvo a leer (procesar lectura lee al final)*/
 
       memset(data_, '\0', longitud_maxima);
@@ -153,12 +157,19 @@ void sesion::re_routear_a_clientes()
   try {
     if(nube::suscritos.find(nombre_servicio_) != nube::suscritos.end())
     {
+      vector<char> ult_buffer(data_,data_ + sz_rx_ult_);
+      shared_ptr<vector<char>> copia = make_shared<vector<char>>(std::move(ult_buffer));
+
       vector<weak_ptr<sesion>>& mis_suscritos = nube::suscritos.at(nombre_servicio_);
       for(weak_ptr<sesion> wp : mis_suscritos)
       {
         shared_ptr<sesion> sp = wp.lock();
         if(sp!=nullptr)
-          sp->hacer_escritura(data_);
+        {
+          //sp->hacer_escritura(data_);
+          sp->retransmitir(copia);
+        }
+
       }
     }
     else
@@ -173,6 +184,9 @@ void sesion::re_routear_a_clientes()
 
 void sesion::re_routear_a_proveedores()
 {
+  vector<char> ult_buffer(data_,data_ + sz_rx_ult_);
+  shared_ptr<vector<char>> copia = make_shared<vector<char>>(std::move(ult_buffer));
+
   for(string s : suscripciones_)
     {
       try{
@@ -181,7 +195,8 @@ void sesion::re_routear_a_proveedores()
           auto wp = nube::servicios.at(s); //estamos suscritos a s. obtenemos un pointer al socket que provee ese servicio
           auto sp = wp.lock();
           if(sp!=nullptr)
-            sp->hacer_escritura(data_);
+            //sp->hacer_escritura(data_);
+            sp->retransmitir(copia);
         }
       }
       /*Puede que nadie provea el servicio al que estamos suscritos. Obtendremos este error*/
@@ -230,6 +245,26 @@ void sesion::ofrecer(std::string ofrecer_que)
     else
       nube::servicios.emplace(make_pair(nombre_servicio_, shared_from_this())); //será correcto?
     proveedor_ = true; //las proximas lecturas pasaran directo a la otra branch, la de forwardeo
+    if(nombre_servicio_=="desk")
+      muting_ = true;
+}
+
+void sesion::retransmitir(shared_ptr<vector<char>> copia)//copia de un pointer a copias. whooou
+{
+  auto si_mismo(shared_from_this());
+  asio::async_write(socket_, asio::buffer(*copia),
+    [this, si_mismo](std::error_code ec, std::size_t bytes_escritos)
+  {
+    if(!ec)
+    {
+      //cout << "retr: " << bytes_escritos << '\n';
+    }
+    else
+    {
+      cout << "Error retrans:" << ec.value() << ":" << ec.message() << '\n';
+    }
+  });
+
 }
 
 void sesion::hacer_escritura(std::string str)
@@ -238,10 +273,11 @@ void sesion::hacer_escritura(std::string str)
   auto si_mismo(shared_from_this());
 
   asio::async_write(socket_, asio::buffer(str_.data(), str_.size()),
-    [this, si_mismo](std::error_code ec, std::size_t /*length*/)
+    [this, si_mismo](std::error_code ec, std::size_t bytes_escritos)
   {
     if (!ec)
     {
+      cout << "escr: " << bytes_escritos << '\n';
       /*procesar escritura exitosa*/
     }
     else
