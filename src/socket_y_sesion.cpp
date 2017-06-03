@@ -51,25 +51,21 @@ void sesion::iniciar_sesion_usuario()
   });
 }
 
-/**Añade aquí entradas para procesar las lecturas entrantes
-Cómo se paquetizan? Recuerda que TCP es un stream y no paquetes como UDP*/
-void sesion::procesar_lectura()
+/**retorna VERDADERO cuando se detecta un simbolo*/
+bool sesion::parsear_mensaje_entrante(std::string lectura)
 {
-  string lectura = data_;
-  if(lectura.back() == 0xA) //LF, por el mensaje viene de la terminal. Este error ocurria con ncat. Causaba errores con ftp y version
+    if(lectura.back() == 0xA) //LF, por el mensaje viene de la terminal. Este error ocurria con ncat. Causaba errores con ftp y version
     lectura.pop_back();
 
-  if(!muting_)
-    cout << lectura << '\n';
-
-  /**Los mensajes de control no queremos retransmitirlos*/
+  /**Los mensajes de control no queremos retransmitirlos. Porque no? Porque sí?*/
   if(lectura.substr(0,3) == "ftp") //esta solicitud *sólo* deben hacérsela al puerto 1339 (puerto ftp)
   {
     string archivo = lectura.substr(4);
     //cout << "ftp:" << archivo << endl;
     enviar_archivo(archivo);
     memset(data_, '\0', longitud_maxima);
-    return; //para evitar volver a leer. De nuevo, a este bloque lógico sólo entra la instancia que escucha en 1339
+    return true; //para evitar volver a leer. De nuevo, a este bloque lógico sólo entra la instancia que escucha en 1339
+    //porque queremos evitar volver a leer?
   }
   else if(lectura.substr(0,7) == "version")
   {
@@ -109,6 +105,32 @@ void sesion::procesar_lectura()
   {
     nube::imprimir_mapas();
   }
+
+  /**si ningun mensaje de control fue detectado, regresamos false para que podamos retransmitira clientes/proveedores*/
+  else
+  {
+    return false;
+  }
+  return true;
+}
+
+/**Añade aquí entradas para procesar las lecturas entrantes
+Cómo se paquetizan? Recuerda que TCP es un stream y no paquetes como UDP*/
+void sesion::procesar_lectura()
+{
+
+  //*** parse
+  string lectura = data_; //esto pierde información que pueda venir después de un '\0'.
+
+  if(!muting_)
+    cout << lectura << '\n';
+
+  if(parsear_mensaje_entrante(lectura))
+  {
+    ; //puede que queramos hacer algo aqui después
+  }
+
+  //parse debe retornar booleano para determinar si re-ruteamos la información o no
   else
   {
     if(proveedor_)
@@ -184,8 +206,8 @@ void sesion::re_routear_a_clientes()
 
 void sesion::re_routear_a_proveedores()
 {
-  vector<char> ult_buffer(data_,data_ + sz_rx_ult_);
-  shared_ptr<vector<char>> copia = make_shared<vector<char>>(std::move(ult_buffer));
+  vector<char> ult_buffer(data_,data_ + sz_rx_ult_); //copiamos el buffer rx a una nueva ubicación de memoria
+  shared_ptr<vector<char>> copia = make_shared<vector<char>>(std::move(ult_buffer)); //la ponemos bajo la custodia de un shared_ptr
 
   for(string s : suscripciones_)
     {
@@ -195,7 +217,8 @@ void sesion::re_routear_a_proveedores()
           auto wp = nube::servicios.at(s); //estamos suscritos a s. obtenemos un pointer al socket que provee ese servicio
           auto sp = wp.lock();
           if(sp!=nullptr)
-            //sp->hacer_escritura(data_);
+            //sp->hacer_escritura(data_); //esto perdia información en llamadas grandes, por el hayazgo de '\0's
+            //llamar a esta función hace una copia del shared_ptr, lo cual es perfecto, pues no se copia el "bulk" de datos
             sp->retransmitir(copia);
         }
       }
@@ -246,6 +269,8 @@ void sesion::ofrecer(std::string ofrecer_que)
       nube::servicios.emplace(make_pair(nombre_servicio_, shared_from_this())); //será correcto?
     proveedor_ = true; //las proximas lecturas pasaran directo a la otra branch, la de forwardeo
     if(nombre_servicio_=="desk")
+      muting_ = true;
+    if(nombre_servicio_=="pser")
       muting_ = true;
 }
 

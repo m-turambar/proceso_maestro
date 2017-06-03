@@ -28,10 +28,18 @@ private:
   void enviar_archivo(std::string archivo);
   void re_routear_a_clientes();
   void re_routear_a_proveedores();
-  void subscribirse(std::string a_cual);
-  void ofrecer(std::string ofrecer_que);
-  void retransmitir(std::shared_ptr<std::vector<char>> copia); //se hace una copia del buffer rx y se guarda en el free store de antemano
 
+  /**esta sesión desea suscribirse a un servicio*/
+  void subscribirse(std::string a_cual);
+
+  /**la sesión conectante ofrecer un servicio al que otros puedan suscribirse*/
+  void ofrecer(std::string ofrecer_que);
+
+  /***/
+  void retransmitir(std::shared_ptr<std::vector<char>> copia);
+
+  /**retorna false si el mensaje no entró en ninguna categoria. Puede ser llamado recursivamente*/
+  bool parsear_mensaje_entrante(std::string lectura);
 
   tcp::socket socket_;
   enum {longitud_maxima = 8192}; /*tal vez usar un vector para ajustar el tamaño de buffer segun la aplicacion*/
