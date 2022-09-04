@@ -15,41 +15,11 @@ extern string cargar_valor(string);
 void sesion::iniciar()
 {
   cout << socket_.remote_endpoint().address().to_string() << ":" << socket_.remote_endpoint().port() << '\n';
-  hacer_escritura("por favor inicia sesion:");
-  iniciar_sesion_usuario();
+  hacer_escritura("Bienvenido");
+  //iniciar_sesion_usuario();
+  hacer_lectura();
 }
 
-void sesion::iniciar_sesion_usuario()
-{
-  auto tu_mismo(shared_from_this());
-  socket_.async_read_some(asio::buffer(data_, longitud_maxima),
-    [this, tu_mismo](std::error_code ec, std::size_t longitud)
-  {
-    if (!ec)
-    {
-      string lectura = data_;
-      usuario_ = usuario::autenticar_usuario(lectura); //que pasa si usuario;contraseña; llega dividido en dos paquetes?
-      if(usuario_!=nullptr)
-      {
-        memset(data_, '\0', longitud_maxima);
-        hacer_escritura("bienvenido " + usuario_->nombre() + '\n');
-        hacer_lectura();                               //el estatus correcto
-      }
-
-      else
-      {
-        cout << "usuario invalido: " << lectura << endl;
-        socket_.close();
-      }
-    }
-    else
-    {
-      /*y no volvemos a leer, si no, se cicla*/
-      cout << "Error en inicio_sesion; error=" << ec.value() << ":" << ec.message() << endl;
-      /*ec.value()==2 (End of file) típicamente significa que el otro lado cerró la conexión*/
-    }
-  });
-}
 
 /**retorna VERDADERO cuando se detecta un simbolo*/
 bool sesion::parsear_mensaje_entrante(std::string lectura)
@@ -66,13 +36,6 @@ bool sesion::parsear_mensaje_entrante(std::string lectura)
     memset(data_, '\0', longitud_maxima);
     return true; //para evitar volver a leer. De nuevo, a este bloque lógico sólo entra la instancia que escucha en 1339
     //porque queremos evitar volver a leer?
-  }
-  else if(lectura.substr(0,7) == "version")
-  {
-    //string version_cliente = lectura.substr(8);
-    string version_serv = cargar_valor("version");
-    //cout << "Cliente con version " << version_cliente << " solicita actualizacion" << version_serv << endl;
-    hacer_escritura("version " + version_serv);
   }
 
   /*Problema: cómo suscribes a un ente y luego le transfieres el stream? despues de suscribirte las operaciones de control terminan*/
@@ -114,12 +77,8 @@ bool sesion::parsear_mensaje_entrante(std::string lectura)
   return true;
 }
 
-/**Añade aquí entradas para procesar las lecturas entrantes
-Cómo se paquetizan? Recuerda que TCP es un stream y no paquetes como UDP*/
 void sesion::procesar_lectura()
 {
-
-  //*** parse
   string lectura = data_; //esto pierde información que pueda venir después de un '\0'.
 
   if(!muting_)
